@@ -1,4 +1,11 @@
-/* CSS Anda tetap sama */
+:root {
+    --primary-green: #1e7e34;
+    --secondary-green: #28a745;
+    --warning-orange: #fd7e14;
+    --danger-red: #dc3545;
+    --info-blue: #17a2b8;
+}
+
 body {
     font-family: 'Times New Roman', Times, serif;
     background-color: #f8f9fa;
@@ -18,7 +25,7 @@ body {
 .logo-fr {
     width: 40px;
     height: 40px;
-    background: linear-gradient(135deg, #1e7e34, #28a745);
+    background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
     border-radius: 8px;
     display: flex;
     align-items: center;
@@ -51,6 +58,41 @@ body {
     opacity: 0.9;
 }
 
+/* NEW: Connection Status */
+.connection-status {
+    font-size: 0.8em;
+    padding: 4px 8px;
+    border-radius: 15px;
+    font-weight: bold;
+}
+
+.connection-online {
+    background-color: var(--secondary-green);
+    color: white;
+}
+
+.connection-offline {
+    background-color: var(--danger-red);
+    color: white;
+}
+
+/* NEW: Real-time Indicator */
+.real-time-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--secondary-green);
+    margin-right: 5px;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
 #map {
     height: 500px;
     width: 100%;
@@ -58,6 +100,7 @@ body {
     border: 2px solid #dee2e6;
 }
 
+/* ENHANCED: Unit Item Styling */
 .unit-item {
     cursor: pointer;
     transition: all 0.3s ease;
@@ -68,31 +111,79 @@ body {
     background-color: white;
     font-family: 'Times New Roman', Times, serif;
     border: 1px solid #e0e0e0;
+    position: relative;
 }
 
 .unit-item:hover {
     background-color: #f8f9fa;
-    border-left-color: #28a745;
+    border-left-color: var(--secondary-green);
     transform: translateY(-1px);
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
 .unit-item.active {
     background-color: #e8f5e8;
-    border-left-color: #28a745;
-    border-color: #28a745;
+    border-left-color: var(--secondary-green);
+    border-color: var(--secondary-green);
 }
 
 .unit-item.moving {
     background-color: #fff8e1;
-    border-left-color: #ffc107;
-    border-color: #ffc107;
+    border-left-color: var(--warning-orange);
+    border-color: var(--warning-orange);
 }
 
 .unit-item.inactive {
     background-color: #fdeaea;
-    border-left-color: #dc3545;
-    border-color: #dc3545;
+    border-left-color: var(--danger-red);
+    border-color: var(--danger-red);
+}
+
+/* NEW: Driver Info */
+.driver-info {
+    font-size: 0.75em;
+    color: #6c757d;
+    margin-top: 2px;
+}
+
+/* NEW: Battery Indicator */
+.battery-indicator {
+    display: inline-block;
+    width: 16px;
+    height: 8px;
+    border: 1px solid #666;
+    border-radius: 2px;
+    position: relative;
+    margin-left: 5px;
+}
+
+.battery-indicator::after {
+    content: '';
+    position: absolute;
+    right: -3px;
+    top: 2px;
+    width: 2px;
+    height: 4px;
+    background: #666;
+    border-radius: 1px;
+}
+
+.battery-level {
+    height: 100%;
+    border-radius: 1px;
+}
+
+.battery-high { background-color: var(--secondary-green); }
+.battery-medium { background-color: var(--warning-orange); }
+.battery-low { background-color: var(--danger-red); }
+
+/* NEW: Accuracy Badge */
+.accuracy-badge {
+    font-size: 0.7em;
+    padding: 2px 6px;
+    border-radius: 10px;
+    background-color: #e9ecef;
+    color: #495057;
 }
 
 .status-badge {
@@ -103,9 +194,9 @@ body {
     font-family: 'Times New Roman', Times, serif;
 }
 
-.status-active { background-color: #28a745; color: white; }
-.status-moving { background-color: #ffc107; color: black; }
-.status-inactive { background-color: #dc3545; color: white; }
+.status-active { background-color: var(--secondary-green); color: white; }
+.status-moving { background-color: var(--warning-orange); color: black; }
+.status-inactive { background-color: var(--danger-red); color: white; }
 
 .custom-marker {
     background: transparent;
@@ -125,9 +216,9 @@ body {
     font-family: 'Times New Roman', Times, serif;
 }
 
-.marker-icon.active { background-color: #28a745; }
-.marker-icon.moving { background-color: #ffc107; }
-.marker-icon.inactive { background-color: #dc3545; }
+.marker-icon.active { background-color: var(--secondary-green); }
+.marker-icon.moving { background-color: var(--warning-orange); }
+.marker-icon.inactive { background-color: var(--danger-red); }
 .marker-icon.pks { background-color: #6f42c1; font-size: 12px; }
 .marker-icon.office { background-color: #e83e8c; font-size: 12px; }
 
@@ -138,17 +229,17 @@ body {
     width: 100%;
 }
 
-.fuel-high { background-color: #28a745; }
-.fuel-medium { background-color: #ffc107; }
-.fuel-low { background-color: #dc3545; }
+.fuel-high { background-color: var(--secondary-green); }
+.fuel-medium { background-color: var(--warning-orange); }
+.fuel-low { background-color: var(--danger-red); }
 
 .unit-popup {
-    min-width: 280px;
+    min-width: 300px;
     font-family: 'Times New Roman', Times, serif;
 }
 
 .popup-header {
-    background: linear-gradient(135deg, #28a745, #20c997);
+    background: linear-gradient(135deg, var(--secondary-green), #20c997);
     color: white;
     padding: 12px;
     margin: -12px -12px 12px -12px;
@@ -191,6 +282,23 @@ body {
     border: 1px solid #ddd;
 }
 
+/* NEW: Last Update Time */
+.last-update {
+    font-size: 0.7em;
+    color: #6c757d;
+    margin-top: 3px;
+}
+
+/* NEW: Live Data Animation */
+@keyframes highlightUpdate {
+    0% { background-color: rgba(40, 167, 69, 0.1); }
+    100% { background-color: transparent; }
+}
+
+.unit-updated {
+    animation: highlightUpdate 2s ease-out;
+}
+
 @media (max-width: 768px) {
     .sidebar {
         position: fixed;
@@ -200,6 +308,7 @@ body {
         transition: transform 0.3s ease;
         overflow-y: auto;
         background: white;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
     }
     
     .sidebar.show {
@@ -222,6 +331,15 @@ body {
         width: 35px;
         height: 35px;
         font-size: 12px;
+    }
+
+    /* NEW: Mobile optimizations */
+    .unit-item {
+        padding: 10px;
+    }
+
+    .driver-info {
+        font-size: 0.7em;
     }
 }
 
@@ -292,15 +410,41 @@ body {
 .legend-title {
     font-weight: bold;
     margin-bottom: 10px;
-    color: #28a745;
-    border-bottom: 2px solid #28a745;
+    color: var(--secondary-green);
+    border-bottom: 2px solid var(--secondary-green);
     padding-bottom: 5px;
 }
 
-.notification {
+/* NEW: System Status Bar */
+.system-status-bar {
+    background: linear-gradient(135deg, #343a40, #495057);
+    color: white;
+    padding: 8px 15px;
+    border-radius: 5px;
+    margin-bottom: 15px;
+    font-size: 0.9em;
+}
+
+.status-item {
+    display: inline-block;
+    margin-right: 20px;
+}
+
+.status-item i {
+    margin-right: 5px;
+}
+
+/* NEW: Notification System */
+.notification-toast {
     position: fixed;
     top: 20px;
     right: 20px;
     z-index: 9999;
     min-width: 300px;
+    animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
