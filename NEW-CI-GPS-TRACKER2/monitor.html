@@ -1,0 +1,1528 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>First Resources - Real-time GPS Tracking</title>
+    
+    <!-- Meta Tags -->
+    <meta name="description" content="Sistem Monitoring Real-time 23 Unit Canter PS125 - Kebun Tempuling">
+    <meta name="keywords" content="gps tracking, first resources, kebun tempuling, canter ps125, real-time">
+    <link rel="icon" type="image/x-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚛</text></svg>">
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    
+    <style>
+        :root {
+            --primary-green: #1e7e34;
+            --secondary-green: #28a745;
+            --warning-orange: #fd7e14;
+            --danger-red: #dc3545;
+            --info-blue: #17a2b8;
+        }
+
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            background-color: #f8f9fa;
+        }
+
+        .navbar-brand, .card-title, h1, h2, h3, h4, h5, h6 {
+            font-family: 'Times New Roman', Times, serif;
+            font-weight: bold;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            margin-right: 15px;
+        }
+
+        .logo-fr {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary-green), var(--secondary-green));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .logo-text {
+            font-size: 12px;
+            line-height: 1.1;
+            text-align: center;
+        }
+
+        .navbar-brand {
+            display: flex;
+            align-items: center;
+            font-size: 1.4em;
+        }
+
+        .brand-text {
+            margin-left: 10px;
+        }
+
+        .brand-text small {
+            font-size: 0.7em;
+            opacity: 0.9;
+        }
+
+        /* NEW: Connection Status */
+        .connection-status {
+            font-size: 0.8em;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-weight: bold;
+        }
+
+        .connection-online {
+            background-color: var(--secondary-green);
+            color: white;
+        }
+
+        .connection-offline {
+            background-color: var(--danger-red);
+            color: white;
+        }
+
+        /* NEW: Real-time Indicator */
+        .real-time-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--secondary-green);
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        #map {
+            height: 500px;
+            width: 100%;
+            border-radius: 6px;
+            border: 2px solid #dee2e6;
+        }
+
+        /* ENHANCED: Unit Item Styling */
+        .unit-item {
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border-left: 4px solid transparent;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            background-color: white;
+            font-family: 'Times New Roman', Times, serif;
+            border: 1px solid #e0e0e0;
+            position: relative;
+        }
+
+        .unit-item:hover {
+            background-color: #f8f9fa;
+            border-left-color: var(--secondary-green);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .unit-item.active {
+            background-color: #e8f5e8;
+            border-left-color: var(--secondary-green);
+            border-color: var(--secondary-green);
+        }
+
+        .unit-item.moving {
+            background-color: #fff8e1;
+            border-left-color: var(--warning-orange);
+            border-color: var(--warning-orange);
+        }
+
+        .unit-item.inactive {
+            background-color: #fdeaea;
+            border-left-color: var(--danger-red);
+            border-color: var(--danger-red);
+        }
+
+        /* NEW: Driver Info */
+        .driver-info {
+            font-size: 0.75em;
+            color: #6c757d;
+            margin-top: 2px;
+        }
+
+        /* NEW: Battery Indicator */
+        .battery-indicator {
+            display: inline-block;
+            width: 16px;
+            height: 8px;
+            border: 1px solid #666;
+            border-radius: 2px;
+            position: relative;
+            margin-left: 5px;
+        }
+
+        .battery-indicator::after {
+            content: '';
+            position: absolute;
+            right: -3px;
+            top: 2px;
+            width: 2px;
+            height: 4px;
+            background: #666;
+            border-radius: 1px;
+        }
+
+        .battery-level {
+            height: 100%;
+            border-radius: 1px;
+        }
+
+        .battery-high { background-color: var(--secondary-green); }
+        .battery-medium { background-color: var(--warning-orange); }
+        .battery-low { background-color: var(--danger-red); }
+
+        /* NEW: Accuracy Badge */
+        .accuracy-badge {
+            font-size: 0.7em;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background-color: #e9ecef;
+            color: #495057;
+        }
+
+        .status-badge {
+            font-size: 0.75rem;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-weight: bold;
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        .status-active { background-color: var(--secondary-green); color: white; }
+        .status-moving { background-color: var(--warning-orange); color: black; }
+        .status-inactive { background-color: var(--danger-red); color: white; }
+
+        .custom-marker {
+            background: transparent;
+            border: none;
+        }
+
+        .marker-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            border: 3px solid white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        .marker-icon.active { background-color: var(--secondary-green); }
+        .marker-icon.moving { background-color: var(--warning-orange); }
+        .marker-icon.inactive { background-color: var(--danger-red); }
+        .marker-icon.pks { background-color: #6f42c1; font-size: 12px; }
+        .marker-icon.office { background-color: #e83e8c; font-size: 12px; }
+
+        .fuel-indicator {
+            height: 4px;
+            border-radius: 2px;
+            margin-top: 4px;
+            width: 100%;
+        }
+
+        .fuel-high { background-color: var(--secondary-green); }
+        .fuel-medium { background-color: var(--warning-orange); }
+        .fuel-low { background-color: var(--danger-red); }
+
+        .unit-popup {
+            min-width: 300px;
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        .popup-header {
+            background: linear-gradient(135deg, var(--secondary-green), #20c997);
+            color: white;
+            padding: 12px;
+            margin: -12px -12px 12px -12px;
+            border-radius: 6px 6px 0 0;
+        }
+
+        .popup-header h6 {
+            margin: 0;
+            font-weight: bold;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-label {
+            font-weight: bold;
+            color: #495057;
+            font-size: 0.8em;
+            margin-bottom: 2px;
+        }
+
+        .info-value {
+            color: #6c757d;
+            font-size: 0.85em;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+        }
+
+        /* NEW: Last Update Time */
+        .last-update {
+            font-size: 0.7em;
+            color: #6c757d;
+            margin-top: 3px;
+        }
+
+        /* NEW: Live Data Animation */
+        @keyframes highlightUpdate {
+            0% { background-color: rgba(40, 167, 69, 0.1); }
+            100% { background-color: transparent; }
+        }
+
+        .unit-updated {
+            animation: highlightUpdate 2s ease-out;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                height: 100vh;
+                z-index: 1000;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                overflow-y: auto;
+                background: white;
+                box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            }
+            
+            .sidebar.show {
+                transform: translateX(0);
+            }
+            
+            #map {
+                height: 400px;
+            }
+            
+            .col-md-9 {
+                width: 100%;
+            }
+
+            .navbar-brand {
+                font-size: 1.1em;
+            }
+
+            .logo-fr {
+                width: 35px;
+                height: 35px;
+                font-size: 12px;
+            }
+
+            /* NEW: Mobile optimizations */
+            .unit-item {
+                padding: 10px;
+            }
+
+            .driver-info {
+                font-size: 0.7em;
+            }
+        }
+
+        .unit-list {
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .unit-list::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .unit-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+
+        .unit-list::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .unit-list::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .unit-item {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            font-family: 'Times New Roman', Times, serif;
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-bottom: 1px solid #dee2e6;
+            font-weight: bold;
+        }
+
+        .stat-card {
+            transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .sidebar {
+            background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+            border-right: 2px solid #e9ecef;
+        }
+
+        .legend-section {
+            background: white;
+            border-radius: 6px;
+            padding: 15px;
+        }
+
+        .legend-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--secondary-green);
+            border-bottom: 2px solid var(--secondary-green);
+            padding-bottom: 5px;
+        }
+
+        /* NEW: System Status Bar */
+        .system-status-bar {
+            background: linear-gradient(135deg, #343a40, #495057);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+
+        .status-item {
+            display: inline-block;
+            margin-right: 20px;
+        }
+
+        .status-item i {
+            margin-right: 5px;
+        }
+
+        /* NEW: Notification System */
+        .notification-toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            min-width: 300px;
+            animation: slideInRight 0.3s ease-out;
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ENHANCED: Navigation Bar with Connection Status -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <div class="logo-container">
+                    <div class="logo-fr">
+                        <div class="logo-text">FIRST<br>RESOURCES</div>
+                    </div>
+                </div>
+                <div class="brand-text">
+                    <strong>GPS TRACKING SYSTEM</strong> 
+                    <small class="d-block">Kebun Tempuling - Real-time Monitoring</small>
+                </div>
+            </a>
+            <div class="navbar-text">
+                <span class="text-warning fw-bold me-3">
+                    🏭 PT. SAGM - <span class="real-time-indicator"></span> LIVE
+                </span>
+                <span id="firebaseStatus" class="connection-status connection-online">
+                    🔵 FIREBASE TERHUBUNG
+                </span>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- ENHANCED: Sidebar - Unit List -->
+            <div class="col-md-3 bg-light sidebar">
+                <div class="p-3">
+                    <!-- NEW: System Status Bar -->
+                    <div class="system-status-bar">
+                        <div class="status-item">
+                            <i>🕒</i> <span id="currentTime">--:--:--</span>
+                        </div>
+                        <div class="status-item">
+                            <i>📡</i> <span id="dataCount">0</span> Data Points
+                        </div>
+                    </div>
+
+                    <h4 class="text-success mb-3">
+                        <i>📊</i> Daftar Unit Canter
+                        <small class="d-block text-muted fs-6">Real-time dari Driver Mobile</small>
+                    </h4>
+                    
+                    <div class="mb-3">
+                        <input type="text" id="searchUnit" class="form-control" placeholder="🔍 Cari unit/driver...">
+                    </div>
+                    
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <select id="filterAfdeling" class="form-select">
+                                <option value="">🏢 Semua Afdeling</option>
+                                <option value="AFD I">AFD I</option>
+                                <option value="AFD II">AFD II</option>
+                                <option value="AFD III">AFD III</option>
+                                <option value="AFD IV">AFD IV</option>
+                                <option value="AFD V">AFD V</option>
+                                <option value="KKPA">KKPA</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <select id="filterStatus" class="form-select">
+                                <option value="">🔄 Semua Status</option>
+                                <option value="active">🟢 Aktif</option>
+                                <option value="moving">🟡 Dalam Perjalanan</option>
+                                <option value="inactive">🔴 Non-Aktif</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <select id="filterFuel" class="form-select">
+                            <option value="">⛽ Semua Level Bahan Bakar</option>
+                            <option value="high">🟢 Tinggi (&gt;70%)</option>
+                            <option value="medium">🟡 Sedang (30-70%)</option>
+                            <option value="low">🔴 Rendah (&lt;30%)</option>
+                        </select>
+                    </div>
+
+                    <div id="unitList" class="unit-list">
+                        <!-- Unit list akan diisi oleh JavaScript dengan data real-time -->
+                        <div class="text-center text-muted py-4">
+                            <div class="spinner-border spinner-border-sm text-success me-2"></div>
+                            Memuat data real-time...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ENHANCED: Main Content - Map -->
+            <div class="col-md-9">
+                <!-- ENHANCED: Statistics Cards -->
+                <div class="row mt-3">
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card text-white bg-primary mb-3 stat-card">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i>🟢</i> Unit Aktif
+                                    <small class="d-block opacity-75">Real-time</small>
+                                </h5>
+                                <h2 id="activeUnits" class="card-text">0/23</h2>
+                                <small class="opacity-75" id="activeUnitsDetail">Loading...</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card text-white bg-success mb-3 stat-card">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i>📏</i> Total Jarak Hari Ini
+                                    <small class="d-block opacity-75">Akumulasi Real-time</small>
+                                </h5>
+                                <h2 id="totalDistance" class="card-text">0 km</h2>
+                                <small class="opacity-75" id="distanceDetail">Loading...</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card text-white bg-warning mb-3 stat-card">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i>⚡</i> Rata-rata Kecepatan
+                                    <small class="d-block opacity-75">Live Update</small>
+                                </h5>
+                                <h2 id="avgSpeed" class="card-text">0 km/h</h2>
+                                <small class="opacity-75" id="speedDetail">Loading...</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="card text-white bg-danger mb-3 stat-card">
+                            <div class="card-body">
+                                <h5 class="card-title">
+                                    <i>⛽</i> Total Bahan Bakar
+                                    <small class="d-block opacity-75">Berdasar Jarak</small>
+                                </h5>
+                                <h2 id="totalFuel" class="card-text">0 L</h2>
+                                <small class="opacity-75" id="fuelDetail">Loading...</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ENHANCED: Map Container -->
+                <div class="card">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0 text-success">
+                            <i>🗺️</i> Peta Live Tracking - Kebun Tempuling
+                            <small class="d-block text-muted fs-6">Update Real-time dari Mobile App</small>
+                        </h5>
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-sm btn-outline-primary" onclick="refreshData()" id="refreshBtn">
+                                <span id="refreshIcon">🔄</span> Refresh
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="exportData()">
+                                <i>📊</i> Export Laporan
+                            </button>
+                            <button class="btn btn-sm btn-outline-success d-md-none" onclick="toggleSidebar()">
+                                <i>📋</i> Daftar Unit
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body p-0 position-relative">
+                        <div id="map"></div>
+                        <!-- NEW: Map Overlay Info -->
+                        <div class="position-absolute top-0 end-0 m-3">
+                            <div class="bg-light rounded p-2 shadow-sm">
+                                <small class="text-muted">
+                                    <i>🎯</i> <span id="gpsAccuracyInfo">Menunggu data GPS...</span>
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ENHANCED: Legenda -->
+                <div class="card mt-3">
+                    <div class="card-header bg-light">
+                        <h5 class="card-title mb-0 text-success">
+                            <i>🎨</i> Legenda Sistem Real-time
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <h6 class="legend-title">Status Unit</h6>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="legend-color bg-success me-2"></div>
+                                    <small>🟢 Unit Aktif</small>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="legend-color bg-warning me-2"></div>
+                                    <small>🟡 Dalam Perjalanan</small>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="legend-color bg-danger me-2"></div>
+                                    <small>🔴 Non-Aktif</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <h6 class="legend-title">Lokasi Penting</h6>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="legend-color me-2" style="background-color: #6f42c1"></div>
+                                    <small>🏭 PKS SAGM</small>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="legend-color me-2" style="background-color: #e83e8c"></div>
+                                    <small>🏢 Kantor Kebun</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <h6 class="legend-title">Level Bahan Bakar</h6>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="legend-color bg-success me-2"></div>
+                                    <small>🟢 Tinggi (&gt;70%)</small>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="legend-color bg-warning me-2"></div>
+                                    <small>🟡 Sedang (30-70%)</small>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="legend-color bg-danger me-2"></div>
+                                    <small>🔴 Rendah (&lt;30%)</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <h6 class="legend-title">Info Baru</h6>
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="battery-indicator me-2">
+                                        <div class="battery-level battery-high" style="width: 80%"></div>
+                                    </span>
+                                    <small>🔋 Level Baterai</small>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="accuracy-badge me-2">±5m</span>
+                                    <small>🎯 Akurasi GPS</small>
+                                </div>
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="real-time-indicator me-2"></span>
+                                    <small>⚡ Data Real-time</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ENHANCED: Loading Spinner -->
+    <div id="loadingSpinner" class="d-none position-fixed top-50 start-50 translate-middle">
+        <div class="text-center bg-light rounded p-4 shadow">
+            <div class="spinner-border text-success mb-3" role="status" style="width: 3rem; height: 3rem;">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mb-0 text-success">Menyambungkan ke Firebase...</p>
+        </div>
+    </div>
+
+    <!-- NEW: Notification Container -->
+    <div id="notificationContainer" class="position-fixed top-0 end-0 p-3" style="z-index: 9999;"></div>
+
+    <!-- JavaScript -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- PASTE JAVASCRIPT YANG SUDAH DIUPGRADE DI SINI -->
+    <script>
+        // ==== FIREBASE CONFIG ====
+        const FIREBASE_CONFIG = {
+            apiKey: "AIzaSyBMiER_5b51IEEoxivkCliRC0WID1f-yzk",
+            authDomain: "joi-gps-tracker.firebaseapp.com",
+            databaseURL: "https://joi-gps-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "joi-gps-tracker",
+            storageBucket: "joi-gps-tracker.firebasestorage.app",
+            messagingSenderId: "216572191895",
+            appId: "1:216572191895:web:a4fef1794daf200a2775d2"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(FIREBASE_CONFIG);
+        const database = firebase.database();
+
+        // // ==== FIREBASE CONFIG ====
+const FIREBASE_CONFIG = {
+    apiKey: "AIzaSyBMiER_5b51IEEoxivkCliRC0WID1f-yzk",
+    authDomain: "joi-gps-tracker.firebaseapp.com",
+    databaseURL: "https://joi-gps-tracker-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "joi-gps-tracker",
+    storageBucket: "joi-gps-tracker.firebasestorage.app",
+    messagingSenderId: "216572191895",
+    appId: "1:216572191895:web:a4fef1794daf200a2775d2"
+};
+
+// Initialize Firebase
+firebase.initializeApp(FIREBASE_CONFIG);
+const database = firebase.database();
+
+// SAGM GPS Tracking System for Kebun Tempuling dengan FIREBASE REAL-TIME
+class SAGMGpsTracking {
+    constructor() {
+        this.map = null;
+        this.units = [];
+        this.markers = {};
+        this.importantMarkers = [];
+        this.unitHistory = {};
+        this.activeUnits = 0;
+        this.totalDistance = 0;
+        this.avgSpeed = 0;
+        this.totalFuelConsumption = 0;
+        this.lastUpdate = new Date();
+        this.autoRefreshInterval = null;
+        this.firebaseListener = null;
+        
+        // Konfigurasi kendaraan - PARAMETER km/L
+        this.vehicleConfig = {
+            fuelEfficiency: 4, // 4 km per liter
+            maxSpeed: 80,
+            idleFuelConsumption: 1.5, // liter per jam saat idle
+            fuelTankCapacity: 100 // liter
+        };
+
+        // Koordinat penting
+        this.importantLocations = {
+            PKS_SAGM: { 
+                lat: -0.43452332690449164, 
+                lng: 102.96741072417917, 
+                name: "PKS SAGM",
+                type: "pks"
+            },
+            KANTOR_KEBUN: { 
+                lat: -0.3575865859028525, 
+                lng: 102.95047687287101, 
+                name: "Kantor Kebun PT SAGM",
+                type: "office"
+            }
+        };
+
+        this.config = {
+            center: [
+                (this.importantLocations.PKS_SAGM.lat + this.importantLocations.KANTOR_KEBUN.lat) / 2,
+                (this.importantLocations.PKS_SAGM.lng + this.importantLocations.KANTOR_KEBUN.lng) / 2
+            ],
+            zoom: 13
+        };
+
+        this.init();
+    }
+
+    init() {
+        try {
+            this.initializeMap();
+            this.setupEventListeners();
+            this.initializeFirebaseListener(); // NEW: Firebase real-time listener
+            this.loadUnitData();
+            this.startAutoRefresh();
+            this.initializeHistoryStorage();
+        } catch (error) {
+            console.error('Error initializing GPS system:', error);
+            this.showError('Gagal menginisialisasi sistem GPS');
+        }
+    }
+
+    // NEW: Initialize Firebase Real-time Listener
+    initializeFirebaseListener() {
+        try {
+            // Listen untuk perubahan real-time di path /units
+            this.firebaseListener = database.ref('/units').on('value', (snapshot) => {
+                this.handleRealTimeUpdate(snapshot.val());
+            }, (error) => {
+                console.error('Firebase listener error:', error);
+                this.showError('Koneksi real-time terputus');
+            });
+            
+            console.log('✅ Firebase real-time listener aktif');
+        } catch (error) {
+            console.error('Error initializing Firebase listener:', error);
+        }
+    }
+
+    // NEW: Handle real-time updates dari Firebase
+    handleRealTimeUpdate(firebaseData) {
+        if (!firebaseData) {
+            console.log('📭 Tidak ada data real-time dari Firebase');
+            return;
+        }
+
+        console.log('🔄 Update real-time dari Firebase:', Object.keys(firebaseData).length + ' units');
+        
+        let updatedCount = 0;
+        
+        // Process each unit from Firebase
+        Object.entries(firebaseData).forEach(([unitName, unitData]) => {
+            const existingUnitIndex = this.units.findIndex(u => u.name === unitName);
+            
+            if (existingUnitIndex !== -1) {
+                // Update existing unit
+                this.updateUnitFromFirebase(this.units[existingUnitIndex], unitData);
+                updatedCount++;
+            } else {
+                // Add new unit from Firebase
+                const newUnit = this.createUnitFromFirebase(unitName, unitData);
+                this.units.push(newUnit);
+                updatedCount++;
+            }
+        });
+
+        if (updatedCount > 0) {
+            this.updateStatistics();
+            this.renderUnitList();
+            this.updateMapMarkers();
+            this.addLog(`Data real-time diperbarui: ${updatedCount} unit`, 'success');
+        }
+    }
+
+    // NEW: Create unit object from Firebase data
+    createUnitFromFirebase(unitName, firebaseData) {
+        return {
+            id: this.generateUnitId(unitName),
+            name: unitName,
+            afdeling: this.getAfdelingFromUnit(unitName),
+            status: this.getStatusFromJourneyStatus(firebaseData.journeyStatus),
+            latitude: firebaseData.lat || this.getRandomLatitude(),
+            longitude: firebaseData.lng || this.getRandomLongitude(),
+            speed: firebaseData.speed || 0,
+            lastUpdate: firebaseData.lastUpdate || new Date().toLocaleTimeString('id-ID'),
+            distance: firebaseData.distance || 0,
+            fuelLevel: this.calculateFuelLevel(firebaseData.distance),
+            fuelUsed: firebaseData.distance ? firebaseData.distance / this.vehicleConfig.fuelEfficiency : 0,
+            engineHours: 1000 + Math.floor(Math.random() * 1000),
+            totalRuntime: this.formatRuntime(1000 + Math.floor(Math.random() * 1000)),
+            block: this.getRandomBlock(),
+            driver: firebaseData.driver || 'Unknown',
+            accuracy: firebaseData.accuracy || 0,
+            batteryLevel: firebaseData.batteryLevel || null,
+            // NEW: Track position for distance calculation
+            lastLat: firebaseData.lat,
+            lastLng: firebaseData.lng
+        };
+    }
+
+    // NEW: Update existing unit with Firebase data
+    updateUnitFromFirebase(unit, firebaseData) {
+        // Calculate distance if position changed
+        if (unit.lastLat && unit.lastLng && firebaseData.lat && firebaseData.lng) {
+            const distance = this.calculateDistance(
+                unit.lastLat, unit.lastLng, 
+                firebaseData.lat, firebaseData.lng
+            );
+            
+            if (distance < 0.1) { // Filter GPS jumps
+                unit.distance += distance;
+                unit.fuelUsed += distance / this.vehicleConfig.fuelEfficiency;
+            }
+        }
+
+        // Update unit data
+        unit.latitude = firebaseData.lat || unit.latitude;
+        unit.longitude = firebaseData.lng || unit.longitude;
+        unit.speed = firebaseData.speed || unit.speed;
+        unit.status = this.getStatusFromJourneyStatus(firebaseData.journeyStatus) || unit.status;
+        unit.lastUpdate = firebaseData.lastUpdate || unit.lastUpdate;
+        unit.driver = firebaseData.driver || unit.driver;
+        unit.accuracy = firebaseData.accuracy || unit.accuracy;
+        unit.batteryLevel = firebaseData.batteryLevel || unit.batteryLevel;
+        
+        // Update fuel level based on distance
+        unit.fuelLevel = this.calculateFuelLevel(unit.distance);
+        
+        // Store current position for next distance calculation
+        unit.lastLat = firebaseData.lat;
+        unit.lastLng = firebaseData.lng;
+    }
+
+    // NEW: Generate consistent ID from unit name
+    generateUnitId(unitName) {
+        const unitIdMap = {
+            'DT-06': 1, 'DT-07': 2, 'DT-12': 3, 'DT-13': 4, 'DT-15': 5, 'DT-16': 6,
+            'DT-17': 7, 'DT-18': 8, 'DT-23': 9, 'DT-24': 10, 'DT-25': 11, 'DT-26': 12,
+            'DT-27': 13, 'DT-28': 14, 'DT-29': 15, 'DT-32': 16, 'DT-33': 17, 'DT-34': 18,
+            'DT-35': 19, 'DT-36': 20, 'DT-37': 21, 'DT-38': 22, 'DT-39': 23
+        };
+        return unitIdMap[unitName] || Date.now();
+    }
+
+    initializeHistoryStorage() {
+        try {
+            const savedHistory = localStorage.getItem('sagm_unit_history');
+            if (savedHistory) {
+                this.unitHistory = JSON.parse(savedHistory);
+            }
+        } catch (error) {
+            console.error('Error loading history:', error);
+            this.unitHistory = {};
+        }
+    }
+
+    saveHistoryToStorage() {
+        try {
+            localStorage.setItem('sagm_unit_history', JSON.stringify(this.unitHistory));
+        } catch (error) {
+            console.error('Error saving history:', error);
+        }
+    }
+
+    initializeMap() {
+        try {
+            this.map = L.map('map').setView(this.config.center, this.config.zoom);
+
+            // Multiple tile layers
+            const googleSatellite = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+                attribution: '© Google Satellite',
+                maxZoom: 22,
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+            });
+
+            const googleHybrid = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+                attribution: '© Google Hybrid',
+                maxZoom: 22,
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+            });
+
+            const openStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap',
+                maxZoom: 20
+            });
+
+            // Add default layer
+            googleSatellite.addTo(this.map);
+
+            // Layer control
+            const baseMaps = {
+                "🛰️ Google Satellite": googleSatellite,
+                "🛰️ Google Hybrid": googleHybrid,
+                "🗺️ OpenStreetMap": openStreetMap
+            };
+
+            L.control.layers(baseMaps).addTo(this.map);
+
+            // Additional controls
+            L.control.scale({ imperial: false }).addTo(this.map);
+            L.control.zoom({ position: 'topright' }).addTo(this.map);
+
+            this.addImportantLocations();
+
+        } catch (error) {
+            console.error('Error initializing map:', error);
+            throw new Error('Gagal menginisialisasi peta');
+        }
+    }
+
+    addImportantLocations() {
+        try {
+            // Clear existing markers
+            this.importantMarkers.forEach(marker => {
+                if (marker && this.map) {
+                    this.map.removeLayer(marker);
+                }
+            });
+            this.importantMarkers = [];
+
+            // PKS Marker
+            const pksIcon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="marker-icon pks" title="PKS SAGM">🏭</div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+
+            const pksMarker = L.marker([this.importantLocations.PKS_SAGM.lat, this.importantLocations.PKS_SAGM.lng], { icon: pksIcon })
+                .bindPopup(this.createLocationPopup('PKS SAGM', 'pks'))
+                .addTo(this.map);
+
+            // Office Marker
+            const officeIcon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="marker-icon office" title="Kantor Kebun">🏢</div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+
+            const officeMarker = L.marker([this.importantLocations.KANTOR_KEBUN.lat, this.importantLocations.KANTOR_KEBUN.lng], { icon: officeIcon })
+                .bindPopup(this.createLocationPopup('Kantor Kebun PT SAGM', 'office'))
+                .addTo(this.map);
+
+            this.importantMarkers.push(pksMarker, officeMarker);
+
+        } catch (error) {
+            console.error('Error adding important locations:', error);
+        }
+    }
+
+    createLocationPopup(name, type) {
+        const pksInfo = `
+            <div class="info-item">
+                <span class="info-label">Kapasitas:</span>
+                <span class="info-value">45 Ton TBS/Jam</span>
+            </div>
+        `;
+
+        const officeInfo = `
+            <div class="info-item">
+                <span class="info-label">Jam Operasi:</span>
+                <span class="info-value">07:00 - 16:00</span>
+            </div>
+        `;
+
+        return `
+            <div class="unit-popup">
+                <div class="popup-header">
+                    <h6 class="mb-0">${type === 'pks' ? '🏭' : '🏢'} ${name}</h6>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Tipe:</span>
+                        <span class="info-value">${type === 'pks' ? 'Pabrik Kelapa Sawit' : 'Kantor Operasional'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value">Operasional</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Lokasi:</span>
+                        <span class="info-value">Kebun Tempuling</span>
+                    </div>
+                    ${type === 'pks' ? pksInfo : officeInfo}
+                </div>
+            </div>
+        `;
+    }
+
+    setupEventListeners() {
+        // Search functionality
+        const searchInput = document.getElementById('searchUnit');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => this.filterUnits());
+        }
+
+        // Filter functionality
+        const filters = ['filterAfdeling', 'filterStatus', 'filterFuel'];
+        filters.forEach(filterId => {
+            const filter = document.getElementById(filterId);
+            if (filter) {
+                filter.addEventListener('change', () => this.filterUnits());
+            }
+        });
+
+        // NEW: Firebase connection status
+        database.ref('.info/connected').on('value', (snapshot) => {
+            this.updateFirebaseStatus(snapshot.val());
+        });
+    }
+
+    // NEW: Update Firebase connection status
+    updateFirebaseStatus(connected) {
+        const statusElement = document.getElementById('firebaseStatus');
+        if (statusElement) {
+            if (connected) {
+                statusElement.innerHTML = '🟢 TERHUBUNG KE FIREBASE';
+                statusElement.className = 'text-success';
+            } else {
+                statusElement.innerHTML = '🔴 FIREBASE OFFLINE';
+                statusElement.className = 'text-danger';
+            }
+        }
+    }
+
+    // ========== SISTEM AKUMULASI JARAK REAL-TIME ==========
+    calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371; // Radius bumi dalam km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c; // Jarak dalam km
+    }
+
+    startAutoRefresh() {
+        // Auto refresh every 30 seconds untuk backup
+        this.autoRefreshInterval = setInterval(() => {
+            this.addLog('Auto-refresh data', 'info');
+        }, 30000);
+    }
+
+    async loadUnitData() {
+        try {
+            this.showLoading(true);
+            
+            const data = await this.fetchUnitData();
+            this.units = data;
+            
+            // Inisialisasi posisi awal untuk akumulasi
+            this.units.forEach(unit => {
+                unit.lastLat = unit.latitude;
+                unit.lastLng = unit.longitude;
+                unit.distance = unit.distance || 0;
+                unit.fuelUsed = unit.fuelUsed || 0;
+            });
+            
+            this.updateUnitHistory();
+            this.updateStatistics();
+            this.renderUnitList();
+            this.updateMapMarkers();
+            
+            this.showLoading(false);
+            this.showNotification('Sistem monitoring aktif - Menunggu data real-time', 'success');
+            
+        } catch (error) {
+            console.error('Error loading unit data:', error);
+            this.showLoading(false);
+            this.showError('Gagal memuat data unit: ' + error.message);
+        }
+    }
+
+    async fetchUnitData() {
+        try {
+            // NEW: Use Firebase SDK instead of fetch
+            const snapshot = await database.ref('/units').once('value');
+            const firebaseData = snapshot.val();
+            
+            // JIKA ADA DATA REAL DARI FIREBASE
+            if (firebaseData && Object.keys(firebaseData).length > 0) {
+                console.log('✅ Data real ditemukan di Firebase:', Object.keys(firebaseData).length + ' units');
+                
+                const realUnits = [];
+                
+                for (const [unitName, unitData] of Object.entries(firebaseData)) {
+                    realUnits.push(this.createUnitFromFirebase(unitName, unitData));
+                }
+                
+                return realUnits;
+            }
+            
+            // JIKA TIDAK ADA DATA FIREBASE, PAKAI DATA SIMULASI
+            console.log('⚠️ Tidak ada data Firebase, menggunakan data simulasi');
+            return this.getSimulatedData();
+            
+        } catch (error) {
+            console.error('Error mengambil data Firebase:', error);
+            return this.getSimulatedData();
+        }
+    }
+
+    // ===== FUNGSI PENDUKUNG =====
+    getAfdelingFromUnit(unitName) {
+        const afdelingMap = {
+            'DT-06': 'AFD I', 'DT-07': 'AFD I', 'DT-12': 'AFD II', 'DT-13': 'AFD II',
+            'DT-15': 'AFD III', 'DT-16': 'AFD III', 'DT-17': 'AFD IV', 'DT-18': 'AFD IV',
+            'DT-23': 'AFD V', 'DT-24': 'AFD V', 'DT-25': 'KKPA', 'DT-26': 'KKPA',
+            'DT-27': 'KKPA', 'DT-28': 'AFD II', 'DT-29': 'AFD III', 'DT-32': 'AFD I',
+            'DT-33': 'AFD IV', 'DT-34': 'AFD V', 'DT-35': 'KKPA', 'DT-36': 'AFD II',
+            'DT-37': 'AFD III', 'DT-38': 'AFD I', 'DT-39': 'AFD IV'
+        };
+        return afdelingMap[unitName] || 'AFD I';
+    }
+
+    getStatusFromJourneyStatus(journeyStatus) {
+        const statusMap = {
+            'started': 'moving',
+            'moving': 'moving', 
+            'active': 'active',
+            'paused': 'active',
+            'ended': 'inactive',
+            'ready': 'inactive'
+        };
+        return statusMap[journeyStatus] || 'active';
+    }
+
+    getRandomLatitude() {
+        return -0.396 + (Math.random() - 0.5) * 0.03;
+    }
+
+    getRandomLongitude() {
+        return 102.959 + (Math.random() - 0.5) * 0.03;
+    }
+
+    calculateFuelLevel(distance) {
+        const baseFuel = 80;
+        const fuelUsed = distance ? distance / this.vehicleConfig.fuelEfficiency : 0;
+        return Math.max(10, baseFuel - (fuelUsed / this.vehicleConfig.fuelTankCapacity * 100));
+    }
+
+    getRandomBlock() {
+        const blocks = ['V73', 'T46', 'U52', 'T38', 'U59', 'X83', 'V68', 'T51', 'U51', 'Q37', 'U47', 'U44', 'V70'];
+        return blocks[Math.floor(Math.random() * blocks.length)];
+    }
+
+    formatRuntime(hours) {
+        const days = Math.floor(hours / 24);
+        const remainingHours = hours % 24;
+        return `${days} hari ${remainingHours} jam`;
+    }
+
+    getSimulatedData() {
+        return new Promise(resolve => {
+            setTimeout(() => {
+                const unitData = [
+                    // ... data simulasi Anda yang asli (tetap sama)
+                    { id: 1, name: "CANTER PS125-001", afdeling: "AFD I", status: "active", latitude: -0.371, longitude: 102.948, speed: 45, lastUpdate: new Date().toLocaleTimeString('id-ID'), distance: 0, fuelLevel: 85, fuelUsed: 0, engineHours: 1250, totalRuntime: "52 hari 4 jam", block: "V73", driver: "Driver Simulasi" },
+                    { id: 2, name: "CANTER PS125-002", afdeling: "AFD II", status: "moving", latitude: -0.368, longitude: 102.955, speed: 60, lastUpdate: new Date().toLocaleTimeString('id-ID'), distance: 0, fuelLevel: 45, fuelUsed: 0, engineHours: 980, totalRuntime: "40 hari 20 jam", block: "T46", driver: "Driver Simulasi" },
+                    // ... lanjutkan dengan data simulasi lainnya
+                ];
+                resolve(unitData);
+            }, 1000);
+        });
+    }
+
+    // NEW: Enhanced unit popup dengan info dari Firebase
+    createUnitPopup(unit) {
+        return `
+            <div class="unit-popup">
+                <div class="popup-header">
+                    <h6 class="mb-0">🚛 ${unit.name}</h6>
+                </div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Driver:</span>
+                        <span class="info-value">${unit.driver || 'Tidak diketahui'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Afdeling:</span>
+                        <span class="info-value">${unit.afdeling}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Status:</span>
+                        <span class="info-value ${unit.status === 'moving' ? 'text-warning' : unit.status === 'active' ? 'text-success' : 'text-danger'}">
+                            ${unit.status === 'moving' ? 'Dalam Perjalanan' : unit.status === 'active' ? 'Aktif' : 'Non-Aktif'}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Kecepatan:</span>
+                        <span class="info-value">${unit.speed} km/h</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Jarak Tempuh:</span>
+                        <span class="info-value">${unit.distance.toFixed(2)} km</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Bahan Bakar:</span>
+                        <span class="info-value">${unit.fuelLevel}%</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Akurasi GPS:</span>
+                        <span class="info-value">${unit.accuracy ? unit.accuracy.toFixed(1) + ' m' : 'Tidak diketahui'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Baterai:</span>
+                        <span class="info-value">${unit.batteryLevel ? unit.batteryLevel + '%' : 'Tidak diketahui'}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Update Terakhir:</span>
+                        <span class="info-value">${unit.lastUpdate}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // NEW: Add log system
+    addLog(message, type = 'info') {
+        console.log(`[${type.toUpperCase()}] ${message}`);
+        // Bisa ditambahkan UI log system jika diperlukan
+    }
+
+    // NEW: Show notification
+    showNotification(message, type = 'info') {
+        // Implementation untuk show notification
+        console.log(`[NOTIFICATION ${type}] ${message}`);
+    }
+
+    // NEW: Show error
+    showError(message) {
+        console.error(`[ERROR] ${message}`);
+        this.showNotification(message, 'error');
+    }
+
+    // NEW: Show loading
+    showLoading(show) {
+        // Implementation untuk show/hide loading spinner
+        const spinner = document.getElementById('loadingSpinner');
+        if (spinner) {
+            spinner.style.display = show ? 'block' : 'none';
+        }
+    }
+
+    // Method yang sudah ada (tetap diperlukan)
+    updateStatistics() {
+        const activeUnits = this.units.filter(unit => unit.status === 'active' || unit.status === 'moving').length;
+        const totalDistance = this.units.reduce((sum, unit) => sum + unit.distance, 0);
+        const totalSpeed = this.units.reduce((sum, unit) => sum + unit.speed, 0);
+        const avgSpeed = this.units.length > 0 ? totalSpeed / this.units.length : 0;
+        const totalFuel = this.units.reduce((sum, unit) => sum + unit.fuelUsed, 0);
+
+        this.activeUnits = activeUnits;
+        this.totalDistance = totalDistance;
+        this.avgSpeed = avgSpeed;
+        this.totalFuelConsumption = totalFuel;
+
+        // Update UI elements
+        if (document.getElementById('activeUnits')) {
+            document.getElementById('activeUnits').textContent = `${activeUnits}/23`;
+        }
+        if (document.getElementById('totalDistance')) {
+            document.getElementById('totalDistance').textContent = `${totalDistance.toFixed(1)} km`;
+        }
+        if (document.getElementById('avgSpeed')) {
+            document.getElementById('avgSpeed').textContent = `${avgSpeed.toFixed(1)} km/h`;
+        }
+        if (document.getElementById('totalFuel')) {
+            document.getElementById('totalFuel').textContent = `${totalFuel.toFixed(1)} L`;
+        }
+    }
+
+    renderUnitList() {
+        const unitList = document.getElementById('unitList');
+        if (!unitList) return;
+
+        unitList.innerHTML = '';
+
+        this.units.forEach(unit => {
+            const unitElement = document.createElement('div');
+            unitElement.className = `unit-item ${unit.status}`;
+            unitElement.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">${unit.name}</h6>
+                        <small class="text-muted">${unit.afdeling} - ${unit.driver || 'No Driver'}</small>
+                    </div>
+                    <span class="badge ${unit.status === 'active' ? 'bg-success' : unit.status === 'moving' ? 'bg-warning' : 'bg-danger'}">
+                        ${unit.status === 'active' ? 'Aktif' : unit.status === 'moving' ? 'Berjalan' : 'Non-Aktif'}
+                    </span>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        Block: <strong>${unit.block}</strong><br>
+                        Kecepatan: ${unit.speed} km/h<br>
+                        Jarak: ${unit.distance.toFixed(2)} km<br>
+                        Bahan Bakar: ${unit.fuelLevel}%<br>
+                        Update: ${unit.lastUpdate}
+                    </small>
+                </div>
+            `;
+            unitList.appendChild(unitElement);
+        });
+    }
+
+    updateMapMarkers() {
+        // Clear existing markers
+        Object.values(this.markers).forEach(marker => {
+            if (marker && this.map) {
+                this.map.removeLayer(marker);
+            }
+        });
+        this.markers = {};
+
+        // Add new markers
+        this.units.forEach(unit => {
+            const markerIcon = L.divIcon({
+                className: 'custom-marker',
+                html: `<div class="marker-icon ${unit.status}" title="${unit.name}">🚛</div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+
+            const marker = L.marker([unit.latitude, unit.longitude], { icon: markerIcon })
+                .bindPopup(this.createUnitPopup(unit))
+                .addTo(this.map);
+            
+            this.markers[unit.id] = marker;
+        });
+    }
+
+    filterUnits() {
+        // Implementation untuk filter units
+        const searchTerm = document.getElementById('searchUnit')?.value.toLowerCase() || '';
+        const afdelingFilter = document.getElementById('filterAfdeling')?.value || '';
+        const statusFilter = document.getElementById('filterStatus')?.value || '';
+        const fuelFilter = document.getElementById('filterFuel')?.value || '';
+
+        // Filter logic here
+        console.log('Filtering units...', { searchTerm, afdelingFilter, statusFilter, fuelFilter });
+    }
+
+    updateUnitHistory() {
+        // Implementation untuk update unit history
+        this.units.forEach(unit => {
+            if (!this.unitHistory[unit.name]) {
+                this.unitHistory[unit.name] = [];
+            }
+            this.unitHistory[unit.name].push({
+                timestamp: new Date().toISOString(),
+                latitude: unit.latitude,
+                longitude: unit.longitude,
+                speed: unit.speed,
+                distance: unit.distance
+            });
+        });
+        this.saveHistoryToStorage();
+    }
+
+    // Cleanup method
+    destroy() {
+        if (this.firebaseListener) {
+            database.ref('/units').off('value', this.firebaseListener);
+        }
+        if (this.autoRefreshInterval) {
+            clearInterval(this.autoRefreshInterval);
+        }
+    }
+}
+
+// Initialize system
+let gpsSystem;
+
+document.addEventListener('DOMContentLoaded', function() {
+    gpsSystem = new SAGMGpsTracking();
+});
+
+// Global functions
+function refreshData() {
+    if (gpsSystem) {
+        gpsSystem.loadUnitData();
+    }
+}
+
+function exportData() {
+    if (gpsSystem) {
+        // Implementation untuk export data
+        console.log('Exporting data...');
+        gpsSystem.showNotification('Fitur export akan datang!', 'info');
+    }
+}
+
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.toggle('show');
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (gpsSystem) {
+        gpsSystem.destroy();
+    }
+});
+        // Copy seluruh kode JavaScript yang sudah saya berikan sebelumnya ke sini
+    </script>
+</body>
+</html>
